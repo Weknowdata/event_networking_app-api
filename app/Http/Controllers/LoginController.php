@@ -18,9 +18,15 @@ class LoginController extends Controller
             ], 401);
         }
 
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $token = $user->createToken('mobile')->plainTextToken;
+
         return response()->json([
             'message' => 'Login successful.',
-            'user' => Auth::user(),
+            'token'   => $token,
+            'user'    => $user->loadMissing('profile'),
         ]);
     }
 }

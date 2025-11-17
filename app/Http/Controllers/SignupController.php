@@ -33,8 +33,11 @@ class SignupController extends Controller
             return $user->load('profile');
         });
 
+        $token = $user->createToken('mobile')->plainTextToken;
+
         return response()->json([
             'message' => 'Signup successful.',
+            'token'   => $token,
             'user' => $user,
         ], 201);
     }
