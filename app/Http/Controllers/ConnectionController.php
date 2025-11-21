@@ -30,9 +30,12 @@ class ConnectionController extends Controller
             ->orderByDesc('connected_at')
             ->get()
             ->map(function (UserConnection $connection) use ($user) {
-                $other = $connection->user_id === $user->id
-                    ? $connection->attendee
-                    : $connection->user;
+                $viewerIsUser = $connection->user_id === $user->id;
+                $other = $viewerIsUser ? $connection->attendee : $connection->user;
+                $myNotes = $viewerIsUser ? $connection->user_notes : $connection->attendee_notes;
+                $myNotesAdded = $viewerIsUser ? $connection->user_notes_added : $connection->attendee_notes_added;
+                $otherNotes = $viewerIsUser ? $connection->attendee_notes : $connection->user_notes;
+                $otherNotesAdded = $viewerIsUser ? $connection->attendee_notes_added : $connection->user_notes_added;
 
                 return [
                     'connection_id' => $connection->id,
@@ -40,8 +43,10 @@ class ConnectionController extends Controller
                     'attendee' => $other ? new UserResource($other) : null,
                     'connected_at' => $connection->connected_at?->toIso8601String(),
                     'total_points' => $connection->total_points,
-                    'notes_added' => $connection->notes_added,
-                    'notes' => $connection->notes,
+                    'notes_added' => $myNotesAdded,
+                    'notes' => $myNotes,
+                    'other_notes_added' => $otherNotesAdded,
+                    'other_notes' => $otherNotes,
                 ];
             })
             ->values();
@@ -84,9 +89,13 @@ class ConnectionController extends Controller
 
         $isFirstTimer = (bool) ($attendee->profile?->is_first_timer ?? false);
         $basePoints = $isFirstTimer ? self::FIRST_TIMER_POINTS : self::RETURNING_POINTS;
-        $notes = $request->notes();
-        $notesAdded = $notes !== null;
-        $totalPoints = $notesAdded ? $basePoints * 2 : $basePoints;
+        $userNotes = $request->notes();
+        $userNotesAdded = $userNotes !== null;
+        $totalPoints = $this->totalPointsWithNotes(
+            $basePoints,
+            $userNotesAdded,
+            false
+        );
 
         $connection = UserConnection::create([
             'user_id' => $user->id,
@@ -95,8 +104,10 @@ class ConnectionController extends Controller
             'is_first_timer' => $isFirstTimer,
             'base_points' => $basePoints,
             'total_points' => $totalPoints,
-            'notes_added' => $notesAdded,
-            'notes' => $notes,
+            'user_notes_added' => $userNotesAdded,
+            'user_notes' => $userNotes,
+            'attendee_notes_added' => false,
+            'attendee_notes' => null,
             'connected_at' => now(),
         ]);
 
@@ -110,19 +121,34 @@ class ConnectionController extends Controller
     {
         $user = $request->user();
 
-        if ($connection->user_id !== $user->id) {
+        if ($connection->user_id !== $user->id && $connection->attendee_id !== $user->id) {
             abort(403, 'You are not allowed to update this connection.');
         }
 
-        if ($connection->notes_added) {
-            return $this->errorResponse('Notes were already added for this connection.');
+        $notes = $request->validated()['notes'];
+
+        if ($connection->user_id === $user->id) {
+            if ($connection->user_notes_added) {
+                return $this->errorResponse('Notes were already added for this connection.');
+            }
+
+            $connection->user_notes = $notes;
+            $connection->user_notes_added = true;
+        } else {
+            if ($connection->attendee_notes_added) {
+                return $this->errorResponse('Notes were already added for this connection.');
+            }
+
+            $connection->attendee_notes = $notes;
+            $connection->attendee_notes_added = true;
         }
 
-        $connection->fill([
-            'notes' => $request->validated()['notes'],
-            'notes_added' => true,
-            'total_points' => $connection->base_points * 2,
-        ])->save();
+        $connection->total_points = $this->totalPointsWithNotes(
+            $connection->base_points,
+            (bool) $connection->user_notes_added,
+            (bool) $connection->attendee_notes_added
+        );
+        $connection->save();
 
         return response()->json([
             'message' => 'Notes saved and points updated.',
@@ -152,6 +178,21 @@ class ConnectionController extends Controller
         }
 
         return hash_equals($attendee->qrSignature(), $signature);
+    }
+
+    private function totalPointsWithNotes(int $basePoints, bool $userNotesAdded, bool $attendeeNotesAdded): int
+    {
+        $bonus = 0;
+
+        if ($userNotesAdded) {
+            $bonus += $basePoints;
+        }
+
+        if ($attendeeNotesAdded) {
+            $bonus += $basePoints;
+        }
+
+        return $basePoints + $bonus;
     }
 
     private function errorResponse(string $message, int $status = 422): JsonResponse

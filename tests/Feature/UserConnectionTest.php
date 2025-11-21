@@ -34,12 +34,15 @@ class UserConnectionTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('connection.base_points', 50)
             ->assertJsonPath('connection.total_points', 100)
-            ->assertJsonPath('connection.notes_added', true);
+            ->assertJsonPath('connection.notes_added', true)
+            ->assertJsonPath('connection.user_notes_added', true)
+            ->assertJsonPath('connection.attendee_notes_added', false);
 
         $this->assertDatabaseHas('user_connections', [
             'user_id' => $user->id,
             'attendee_id' => $attendee->id,
-            'notes_added' => true,
+            'user_notes_added' => true,
+            'attendee_notes_added' => false,
         ]);
     }
 
@@ -65,7 +68,9 @@ class UserConnectionTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('connection.base_points', 25)
             ->assertJsonPath('connection.total_points', 25)
-            ->assertJsonPath('connection.notes_added', false);
+            ->assertJsonPath('connection.notes_added', false)
+            ->assertJsonPath('connection.user_notes_added', false)
+            ->assertJsonPath('connection.attendee_notes_added', false);
     }
 
     public function test_daily_cap_prevents_more_than_fifteen_connections(): void
@@ -156,8 +161,10 @@ class UserConnectionTest extends TestCase
             'attendee_id' => $attendee->id,
             'base_points' => 25,
             'total_points' => 25,
-            'notes_added' => false,
-            'notes' => null,
+            'user_notes_added' => false,
+            'user_notes' => null,
+            'attendee_notes_added' => false,
+            'attendee_notes' => null,
         ]);
 
         $response = $this->actingAs($user, 'sanctum')->patchJson("/api/connections/{$connection->id}/notes", [
@@ -166,12 +173,82 @@ class UserConnectionTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('connection.total_points', 50)
-            ->assertJsonPath('connection.notes_added', true);
+            ->assertJsonPath('connection.notes_added', true)
+            ->assertJsonPath('connection.user_notes_added', true)
+            ->assertJsonPath('connection.attendee_notes_added', false);
 
         $this->assertDatabaseHas('user_connections', [
             'id' => $connection->id,
-            'notes_added' => true,
+            'user_notes_added' => true,
+            'attendee_notes_added' => false,
             'total_points' => 50,
+        ]);
+    }
+
+    public function test_attendee_can_add_notes_and_receive_points_bonus(): void
+    {
+        $user = User::factory()->create();
+        $attendee = User::factory()->create();
+
+        $connection = UserConnection::factory()->create([
+            'user_id' => $user->id,
+            'attendee_id' => $attendee->id,
+            'base_points' => 50,
+            'total_points' => 50,
+            'user_notes_added' => false,
+            'attendee_notes_added' => false,
+        ]);
+
+        $response = $this->actingAs($attendee, 'sanctum')->patchJson("/api/connections/{$connection->id}/notes", [
+            'notes' => 'Following up next week.',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('connection.total_points', 100)
+            ->assertJsonPath('connection.notes_added', true)
+            ->assertJsonPath('connection.attendee_notes_added', true)
+            ->assertJsonPath('connection.user_notes_added', false);
+
+        $this->assertDatabaseHas('user_connections', [
+            'id' => $connection->id,
+            'attendee_notes_added' => true,
+            'total_points' => 100,
+        ]);
+    }
+
+    public function test_total_points_increase_when_both_participants_add_notes(): void
+    {
+        $user = User::factory()->create();
+        $attendee = User::factory()->create();
+
+        $connection = UserConnection::factory()->create([
+            'user_id' => $user->id,
+            'attendee_id' => $attendee->id,
+            'base_points' => 25,
+            'total_points' => 25,
+            'user_notes_added' => false,
+            'attendee_notes_added' => false,
+        ]);
+
+        $this->actingAs($user, 'sanctum')->patchJson("/api/connections/{$connection->id}/notes", [
+            'notes' => 'Initial note.',
+        ])->assertOk()
+            ->assertJsonPath('connection.total_points', 50);
+
+        $response = $this->actingAs($attendee, 'sanctum')->patchJson("/api/connections/{$connection->id}/notes", [
+            'notes' => 'Second perspective.',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('connection.total_points', 75)
+            ->assertJsonPath('connection.user_notes_added', true)
+            ->assertJsonPath('connection.attendee_notes_added', true);
+
+        $this->assertDatabaseHas('user_connections', [
+            'id' => $connection->id,
+            'total_points' => 75,
+            'user_notes_added' => true,
+            'attendee_notes_added' => true,
         ]);
     }
 
@@ -197,7 +274,8 @@ class UserConnectionTest extends TestCase
         $connection = UserConnection::factory()->create([
             'user_id' => $other->id,
             'attendee_id' => $attendee->id,
-            'notes_added' => false,
+            'user_notes_added' => false,
+            'attendee_notes_added' => false,
         ]);
 
         $this->actingAs($user, 'sanctum')
@@ -215,7 +293,8 @@ class UserConnectionTest extends TestCase
         $connection = UserConnection::factory()->create([
             'user_id' => $user->id,
             'attendee_id' => $attendee->id,
-            'notes_added' => true,
+            'user_notes_added' => true,
+            'attendee_notes_added' => false,
         ]);
 
         $response = $this->actingAs($user, 'sanctum')->patchJson("/api/connections/{$connection->id}/notes", [
@@ -223,6 +302,26 @@ class UserConnectionTest extends TestCase
         ]);
 
         $response->assertStatus(422)
+            ->assertJsonPath('message', 'Notes were already added for this connection.');
+    }
+
+    public function test_attendee_cannot_submit_notes_twice(): void
+    {
+        $user = User::factory()->create();
+        $attendee = User::factory()->create();
+
+        $connection = UserConnection::factory()->create([
+            'user_id' => $user->id,
+            'attendee_id' => $attendee->id,
+            'user_notes_added' => false,
+            'attendee_notes_added' => true,
+        ]);
+
+        $this->actingAs($attendee, 'sanctum')
+            ->patchJson("/api/connections/{$connection->id}/notes", [
+                'notes' => 'Duplicate attempt.',
+            ])
+            ->assertStatus(422)
             ->assertJsonPath('message', 'Notes were already added for this connection.');
     }
 
@@ -261,8 +360,8 @@ class UserConnectionTest extends TestCase
             'attendee_id' => $outboundAttendee->id,
             'connected_at' => now()->subDay(),
             'total_points' => 75,
-            'notes' => 'Notes here',
-            'notes_added' => true,
+            'user_notes' => 'Notes here',
+            'user_notes_added' => true,
         ]);
 
         $latestConnection = UserConnection::factory()->create([
@@ -280,7 +379,9 @@ class UserConnectionTest extends TestCase
             ->assertJsonPath('connections.0.attendee.id', $inboundAttendee->id)
             ->assertJsonPath('connections.1.connection_id', $earlierConnection->id)
             ->assertJsonPath('connections.1.attendee_id', $outboundAttendee->id)
-            ->assertJsonPath('connections.1.attendee.id', $outboundAttendee->id);
+            ->assertJsonPath('connections.1.attendee.id', $outboundAttendee->id)
+            ->assertJsonPath('connections.1.notes', 'Notes here')
+            ->assertJsonPath('connections.1.other_notes', null);
     }
 
     private function pairToken(int $userId, int $attendeeId): string

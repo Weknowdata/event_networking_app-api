@@ -17,8 +17,10 @@ class UserConnection extends Model
         'is_first_timer',
         'base_points',
         'total_points',
-        'notes_added',
-        'notes',
+        'user_notes_added',
+        'user_notes',
+        'attendee_notes_added',
+        'attendee_notes',
         'connected_at',
     ];
 
@@ -29,7 +31,8 @@ class UserConnection extends Model
     {
         return [
             'is_first_timer' => 'boolean',
-            'notes_added' => 'boolean',
+            'user_notes_added' => 'boolean',
+            'attendee_notes_added' => 'boolean',
             'connected_at' => 'datetime',
         ];
     }

@@ -17,8 +17,11 @@ class UserConnectionFactory extends Factory
     {
         $isFirstTimer = (bool) $this->faker->boolean;
         $basePoints = $isFirstTimer ? 50 : 25;
-        $notesAdded = $this->faker->boolean;
-        $totalPoints = $notesAdded ? $basePoints * 2 : $basePoints;
+        $userNotesAdded = $this->faker->boolean;
+        $attendeeNotesAdded = $this->faker->boolean;
+        $totalPoints = $basePoints
+            + ($userNotesAdded ? $basePoints : 0)
+            + ($attendeeNotesAdded ? $basePoints : 0);
 
         return [
             'user_id' => User::factory(),
@@ -27,8 +30,10 @@ class UserConnectionFactory extends Factory
             'is_first_timer' => $isFirstTimer,
             'base_points' => $basePoints,
             'total_points' => $totalPoints,
-            'notes_added' => $notesAdded,
-            'notes' => $notesAdded ? $this->faker->sentence : null,
+            'user_notes_added' => $userNotesAdded,
+            'user_notes' => $userNotesAdded ? $this->faker->sentence : null,
+            'attendee_notes_added' => $attendeeNotesAdded,
+            'attendee_notes' => $attendeeNotesAdded ? $this->faker->sentence : null,
             'connected_at' => now(),
         ];
     }
