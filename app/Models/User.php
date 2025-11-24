@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use RuntimeException;
 
 class User extends Authenticatable
 {
@@ -36,6 +37,13 @@ class User extends Authenticatable
     ];
 
     /**
+     * @var list<string>
+     */
+    protected $appends = [
+        'qr_payload',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -56,5 +64,33 @@ class User extends Authenticatable
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
+    }
+
+    public function qrSignature(): string
+    {
+        $key = config('app.key');
+
+        if (! is_string($key) || $key === '') {
+            throw new RuntimeException('Application key is missing; cannot sign QR payloads.');
+        }
+
+        return hash_hmac('sha256', (string) $this->getAuthIdentifier(), $key);
+    }
+
+    public function qrPayload(): string
+    {
+        $payload = [
+            'attendee_id' => (string) $this->getAuthIdentifier(),
+            'name' => $this->name,
+            'email' => $this->email,
+            'sig' => $this->qrSignature(),
+        ];
+
+        return json_encode($payload, JSON_UNESCAPED_SLASHES);
+    }
+
+    public function getQrPayloadAttribute(): string
+    {
+        return $this->qrPayload();
     }
 }

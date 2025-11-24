@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\GoogleMobileAuthRequest;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -38,11 +40,11 @@ class GoogleAuthController extends Controller
      */
     private function verifyIdToken(string $idToken): array
     {
-        $response = Http::retry(2, 250)->get('https://oauth2.googleapis.com/tokeninfo', [
-            'id_token' => $idToken,
-        ]);
-
-        if ($response->failed()) {
+        try {
+            $response = Http::retry(2, 250)->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $idToken,
+            ])->throw();
+        } catch (ConnectionException|RequestException $exception) {
             $this->throwInvalidToken();
         }
 

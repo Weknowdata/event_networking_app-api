@@ -6,23 +6,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class UserProfile extends Model
+class PointsLog extends Model
 {
     use HasFactory;
 
-    /**
-     * @var list<string>
-     */
     protected $fillable = [
-        'job_title',
-        'company_name',
-        'avatar_url',
-        'linkedin_url',
-        'location',
-        'bio',
-        'phone_number',
-        'is_first_timer',
-        'tags',
+        'user_id',
+        'user_connection_id',
+        'source_type',
+        'points',
+        'metadata',
+        'awarded_at',
     ];
 
     /**
@@ -31,13 +25,18 @@ class UserProfile extends Model
     protected function casts(): array
     {
         return [
-            'is_first_timer' => 'boolean',
-            'tags' => 'array',
+            'metadata' => 'array',
+            'awarded_at' => 'datetime',
         ];
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function connection(): BelongsTo
+    {
+        return $this->belongsTo(UserConnection::class, 'user_connection_id');
     }
 }
