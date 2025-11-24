@@ -354,6 +354,8 @@ class UserConnectionTest extends TestCase
             'is_first_timer' => true,
             'user_notes' => 'Notes here',
             'user_notes_added' => true,
+            'attendee_notes' => null,
+            'attendee_notes_added' => false,
         ]);
 
         $latestConnection = UserConnection::factory()->create([
