@@ -29,6 +29,7 @@ class ConnectionController extends Controller
             })
             ->orderByDesc('connected_at')
             ->get()
+            // Shape each connection from the perspective of the viewer (could be either side).
             ->map(function (UserConnection $connection) use ($user) {
                 $connection = $this->attachComputedPoints($connection);
                 $viewerIsUser = $connection->user_id === $user->id;
@@ -78,12 +79,14 @@ class ConnectionController extends Controller
             return $this->errorResponse('The scan cannot be verified. Please try again.', 422);
         }
 
+        // Enforce a per-day connection cap to slow abuse.
         if ($this->hasReachedDailyLimit($user->id)) {
             return $this->errorResponse('Daily connection limit reached. Try again tomorrow.', 429);
         }
 
         $pairToken = $this->pairToken($user->id, $attendee->id);
 
+        // Deduplicate the pair regardless of initiator order.
         if (UserConnection::where('pair_token', $pairToken)->exists()) {
             return $this->errorResponse('You have already connected with this attendee.');
         }
@@ -93,6 +96,7 @@ class ConnectionController extends Controller
         $userNotes = $request->notes();
         $userNotesAdded = $userNotes !== null;
 
+        // Create the symmetric connection record with note flags for each participant.
         $connection = UserConnection::create([
             'user_id' => $user->id,
             'attendee_id' => $attendee->id,
@@ -105,9 +109,11 @@ class ConnectionController extends Controller
             'connected_at' => now(),
         ]);
 
+        // Award base points to both sides for the connection itself.
         $this->logPoints($connection, $user, $basePoints, PointsSource::CONNECTION, ['role' => 'initiator']);
         $this->logPoints($connection, $attendee, $basePoints, PointsSource::CONNECTION, ['role' => 'attendee']);
 
+        // Bonus points when the initiator adds notes during creation.
         if ($userNotesAdded) {
             $this->logPoints($connection, $user, $basePoints, PointsSource::CONNECTION_NOTE);
         }
@@ -135,6 +141,7 @@ class ConnectionController extends Controller
                 return $this->errorResponse('Notes were already added for this connection.');
             }
 
+            // Viewer is the connection initiator.
             $connection->user_notes = $notes;
             $connection->user_notes_added = true;
         } else {
@@ -142,6 +149,7 @@ class ConnectionController extends Controller
                 return $this->errorResponse('Notes were already added for this connection.');
             }
 
+            // Viewer is the attendee being connected to.
             $connection->attendee_notes = $notes;
             $connection->attendee_notes_added = true;
         }
@@ -207,6 +215,7 @@ class ConnectionController extends Controller
         $base = $this->basePoints((bool) $connection->is_first_timer);
         $bonus = 0;
 
+        // Each side earns an extra base-points bonus for adding notes.
         if ($connection->user_notes_added) {
             $bonus += $base;
         }

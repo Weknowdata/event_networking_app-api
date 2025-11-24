@@ -17,9 +17,11 @@ class UserConnectionResource extends JsonResource
         $viewerId = $request->user()?->id;
         $viewerIsUser = $viewerId !== null && $viewerId === $this->user_id;
         $viewerIsAttendee = $viewerId !== null && $viewerId === $this->attendee_id;
+        // Base points depend on whether the attendee is a first timer; bonuses are derived elsewhere.
         $basePoints = $this->is_first_timer
             ? UserConnection::FIRST_TIMER_POINTS
             : UserConnection::RETURNING_POINTS;
+        // Only expose notes for the viewer's side to avoid leaking the other participant's notes.
         $notesAdded = $viewerIsUser
             ? $this->user_notes_added
             : ($viewerIsAttendee ? $this->attendee_notes_added : false);

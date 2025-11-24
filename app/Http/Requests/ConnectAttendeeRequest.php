@@ -29,6 +29,7 @@ class ConnectAttendeeRequest extends FormRequest
     {
         $notes = $this->input('notes');
 
+        // Normalize empty strings to null so callers can treat absence and blank the same way.
         return $notes !== null && $notes !== '' ? (string) $notes : null;
     }
 }

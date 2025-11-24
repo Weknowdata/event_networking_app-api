@@ -11,6 +11,7 @@ class UserConnection extends Model
 {
     use HasFactory;
 
+    // Point values granted for connecting with first-time vs returning attendees.
     public const FIRST_TIMER_POINTS = 50;
     public const RETURNING_POINTS = 25;
 

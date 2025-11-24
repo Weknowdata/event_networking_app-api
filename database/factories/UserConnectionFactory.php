@@ -22,6 +22,7 @@ class UserConnectionFactory extends Factory
         return [
             'user_id' => User::factory(),
             'attendee_id' => User::factory(),
+            // Populate after making/creating to ensure deterministic ordering of the pair.
             'pair_token' => null,
             'is_first_timer' => $isFirstTimer,
             'user_notes_added' => $userNotesAdded,
@@ -40,6 +41,7 @@ class UserConnectionFactory extends Factory
                 (int) $connection->attendee_id
             );
         })->afterCreating(function (UserConnection $connection) {
+            // Pair token uses sorted IDs to make the relationship symmetric no matter who initiated.
             $connection->updateQuietly([
                 'pair_token' => $this->pairToken(
                     (int) $connection->user_id,

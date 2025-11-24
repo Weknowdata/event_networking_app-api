@@ -10,13 +10,16 @@ class AttendeeController extends Controller
 {
     public function index(Request $request)
     {
+        // Start with all attendee profiles and eager load their profile details to avoid N+1 queries.
         $query = User::query()->with('profile');
 
         if ($request->user()) {
+            // Do not return the currently authenticated user in the listing.
             $query->whereKeyNot($request->user()->getKey());
         }
 
         if ($search = trim((string) $request->query('q', ''))) {
+            // Basic multi-field search across user and profile attributes.
             $query->where(function ($builder) use ($search) {
                 $builder->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
@@ -31,9 +34,11 @@ class AttendeeController extends Controller
         $filter = $request->query('filter');
 
         if ($filter === 'first_timers') {
+            // Narrow to attendees marked as first timers when requested.
             $query->whereHas('profile', fn ($profileQuery) => $profileQuery->where('is_first_timer', true));
         }
 
+        // Clamp per-page to a reasonable range to avoid excessive payloads.
         $perPage = (int) $request->integer('per_page', 15);
         $perPage = max(1, min($perPage, 100));
 
