@@ -67,6 +67,68 @@ class LeaderboardControllerTest extends TestCase
             ->assertJsonPath('viewer.connected', true);
     }
 
+    public function test_leaderboard_can_filter_to_connected_only_and_24h_period(): void
+    {
+        $viewer = User::factory()->create(['name' => 'Viewer']);
+        $viewer->profile()->create([
+            'job_title' => 'Viewer Role',
+            'company_name' => 'Viewer Co',
+        ]);
+
+        $friend = User::factory()->create(['name' => 'Friend']);
+        $friend->profile()->create([
+            'job_title' => 'Friend Role',
+            'company_name' => 'Friend Co',
+        ]);
+
+        $stranger = User::factory()->create(['name' => 'Stranger']);
+        $stranger->profile()->create([
+            'job_title' => 'Stranger Role',
+            'company_name' => 'Stranger Co',
+        ]);
+
+        // Viewer is connected to friend only.
+        UserConnection::factory()->create([
+            'user_id' => $viewer->id,
+            'attendee_id' => $friend->id,
+        ]);
+
+        PointsLog::factory()->create([
+            'user_id' => $friend->id,
+            'points' => 40,
+            'awarded_at' => Carbon::now()->subHours(2),
+        ]);
+
+        PointsLog::factory()->create([
+            'user_id' => $viewer->id,
+            'points' => 10,
+            'awarded_at' => Carbon::now()->subHours(1),
+        ]);
+
+        // Stranger has points but should be filtered out by connected_only.
+        PointsLog::factory()->create([
+            'user_id' => $stranger->id,
+            'points' => 100,
+            'awarded_at' => Carbon::now()->subHours(3),
+        ]);
+
+        $response = $this->actingAs($viewer, 'sanctum')
+            ->getJson('/api/leaderboard?period=24h&connected_only=true');
+
+        $response->assertOk()
+            ->assertJsonPath('period', '24h')
+            ->assertJsonCount(2, 'leaders')
+            ->assertJsonPath('leaders.0.name', 'Friend')
+            ->assertJsonPath('leaders.0.points', 40)
+            ->assertJsonPath('leaders.0.connected', true)
+            ->assertJsonPath('leaders.1.name', 'Viewer')
+            ->assertJsonPath('leaders.1.points', 10)
+            ->assertJsonPath('leaders.1.connected', false)
+            ->assertJsonPath('viewer.name', 'Viewer')
+            ->assertJsonPath('viewer.rank', 3)
+            ->assertJsonPath('viewer.points', 10);
+    }
+
     public function test_leaderboard_filters_by_period(): void
     {
         $viewer = User::factory()->create(['name' => 'Viewer']);

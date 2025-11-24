@@ -22,11 +22,21 @@ class LeaderboardController extends Controller
         $period = $this->normalizePeriod((string) $request->query('period', '30d'));
         $limit = $this->clampLimit((int) $request->integer('limit', self::DEFAULT_LIMIT));
         $periodStart = $this->periodStart($period);
+        $connectedOnly = (bool) $request->boolean('connected_only', false);
+        $viewerConnections = $viewer
+            ? $this->viewerConnectionIds($viewer->id)
+            : collect();
 
         // Aggregate total points per user for the selected window; tie-break by user_id for stability.
+        // Optionally constrain to only the viewer’s connections (plus the viewer) when connected_only is set.
         $totals = PointsLog::query()
             ->selectRaw('user_id, SUM(points) as total_points')
             ->when($periodStart, fn ($query) => $query->where('awarded_at', '>=', $periodStart))
+            // Optional friends-only/connected-only filter driven by the viewer’s connections.
+            ->when(
+                $connectedOnly && $viewer,
+                fn ($query) => $query->whereIn('user_id', $viewerConnections->concat([$viewer->id])->unique())
+            )
             ->groupBy('user_id')
             ->orderByDesc('total_points')
             ->orderBy('user_id')
@@ -45,10 +55,7 @@ class LeaderboardController extends Controller
             ->get()
             ->keyBy('id');
 
-        // Precompute who the viewer is already connected to (so we can badge rows).
-        $viewerConnections = $viewer
-            ? $this->viewerConnectionIds($viewer->id)
-            : collect();
+        // $viewerConnections already computed; reuse to badge rows.
 
         $leaders = $totals->values()->map(function ($row, int $index) use ($users, $viewerConnections, $viewer) {
             /** @var User|null $user */
@@ -77,7 +84,7 @@ class LeaderboardController extends Controller
     private function normalizePeriod(string $period): string
     {
         // Default to 30d to avoid expensive all-time queries unless explicitly requested.
-        return in_array($period, ['all_time', '30d', '7d'], true)
+        return in_array($period, ['all_time', '30d', '7d', '24h'], true)
             ? $period
             : '30d';
     }
@@ -91,6 +98,7 @@ class LeaderboardController extends Controller
     private function periodStart(string $period): ?Carbon
     {
         return match ($period) {
+            '24h' => Carbon::now()->subHours(24),
             '7d' => Carbon::now()->subDays(7),
             'all_time' => null,
             default => Carbon::now()->subDays(30),
