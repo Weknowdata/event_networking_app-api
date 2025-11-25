@@ -32,7 +32,7 @@ class UserConnectionTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('connection.total_points', 100)
+            ->assertJsonPath('connection.total_points', 60)
             ->assertJsonPath('connection.notes_added', true)
             ->assertJsonPath('connection.user_notes_added', true)
             ->assertJsonPath('connection.attendee_notes_added', false);
@@ -169,7 +169,7 @@ class UserConnectionTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('connection.total_points', 50)
+            ->assertJsonPath('connection.total_points', 35)
             ->assertJsonPath('connection.notes_added', true)
             ->assertJsonPath('connection.user_notes_added', true)
             ->assertJsonPath('connection.attendee_notes_added', false);
@@ -199,7 +199,7 @@ class UserConnectionTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('connection.total_points', 100)
+            ->assertJsonPath('connection.total_points', 60)
             ->assertJsonPath('connection.notes_added', true)
             ->assertJsonPath('connection.attendee_notes_added', true)
             ->assertJsonPath('connection.user_notes_added', false);
@@ -226,14 +226,14 @@ class UserConnectionTest extends TestCase
         $this->actingAs($user, 'sanctum')->patchJson("/api/connections/{$connection->id}/notes", [
             'notes' => 'Initial note.',
         ])->assertOk()
-            ->assertJsonPath('connection.total_points', 50);
+            ->assertJsonPath('connection.total_points', 35);
 
         $response = $this->actingAs($attendee, 'sanctum')->patchJson("/api/connections/{$connection->id}/notes", [
             'notes' => 'Second perspective.',
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('connection.total_points', 75)
+            ->assertJsonPath('connection.total_points', 45)
             ->assertJsonPath('connection.user_notes_added', true)
             ->assertJsonPath('connection.attendee_notes_added', true);
 

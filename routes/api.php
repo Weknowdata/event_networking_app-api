@@ -6,6 +6,7 @@ use App\Http\Controllers\LoginController;
 use App\Http\Controllers\SignupController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\ConnectionController;
+use App\Http\Controllers\LeaderboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -29,4 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/connections', [ConnectionController::class, 'index']);
     Route::post('/connections', [ConnectionController::class, 'store']);
     Route::patch('/connections/{connection}/notes', [ConnectionController::class, 'updateNotes']);
+
+    // Points leaderboard (supports period/limit, returns viewer rank).
+    Route::get('/leaderboard', [LeaderboardController::class, 'index']);
 });

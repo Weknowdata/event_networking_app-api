@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 class ConnectionController extends Controller
 {
     private const DAILY_LIMIT = 15;
+    private const NOTE_POINTS = 10;
 
     public function index(Request $request): JsonResponse
     {
@@ -109,13 +110,12 @@ class ConnectionController extends Controller
             'connected_at' => now(),
         ]);
 
-        // Award base points to both sides for the connection itself.
+        // Award base points only to the initiator (scanner).
         $this->logPoints($connection, $user, $basePoints, PointsSource::CONNECTION, ['role' => 'initiator']);
-        $this->logPoints($connection, $attendee, $basePoints, PointsSource::CONNECTION, ['role' => 'attendee']);
 
         // Bonus points when the initiator adds notes during creation.
         if ($userNotesAdded) {
-            $this->logPoints($connection, $user, $basePoints, PointsSource::CONNECTION_NOTE);
+            $this->logPoints($connection, $user, self::NOTE_POINTS, PointsSource::CONNECTION_NOTE);
         }
 
         $this->attachComputedPoints($connection);
@@ -160,7 +160,7 @@ class ConnectionController extends Controller
         $this->logPoints(
             $connection,
             $user,
-            $basePoints,
+            self::NOTE_POINTS,
             PointsSource::CONNECTION_NOTE
         );
 
@@ -215,15 +215,16 @@ class ConnectionController extends Controller
         $base = $this->basePoints((bool) $connection->is_first_timer);
         $bonus = 0;
 
-        // Each side earns an extra base-points bonus for adding notes.
+        // Each side earns a flat bonus for adding notes.
         if ($connection->user_notes_added) {
-            $bonus += $base;
+            $bonus += self::NOTE_POINTS;
         }
 
         if ($connection->attendee_notes_added) {
-            $bonus += $base;
+            $bonus += self::NOTE_POINTS;
         }
 
+        // Base points awarded to initiator only; total_points reflects aggregate per-connection.
         return $base + $bonus;
     }
 

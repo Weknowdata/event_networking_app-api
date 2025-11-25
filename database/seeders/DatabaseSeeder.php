@@ -15,13 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-        $this->call(UserProfileSeeder::class);
+        // 1) Seed users (20 total including a predictable test account).
+        $this->call(UserDemoSeeder::class);
+        // 2) Attach profiles to all users.
+        $this->call(UserProfileDemoSeeder::class);
+        // 3) Create demo connections between users.
+        $this->call(ConnectionDemoSeeder::class);
+        // 4) Seed points for those connections to drive the leaderboard.
+        $this->call(LeaderboardPointsSeeder::class);
     }
 }
