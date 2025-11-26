@@ -37,6 +37,8 @@ class AgendaControllerTest extends TestCase
         $this->assertEquals('10:00', $firstDay['slots'][0]['end_time']);
         $this->assertEquals('16:00', $firstDay['slots'][7]['start_time']);
         $this->assertEquals('17:00', $firstDay['slots'][7]['end_time']);
+        // Speakers should be present in the payload, even if empty for generated agendas.
+        $this->assertIsArray($firstDay['slots'][0]['speakers']);
     }
 
     public function test_can_generate_seven_day_agenda(): void

@@ -20,6 +20,7 @@ class AgendaSlotResource extends JsonResource
             'title' => $this->title,
             'description' => $this->description,
             'location' => $this->location,
+            'speakers' => AgendaSpeakerResource::collection($this->whenLoaded('speakers')),
         ];
     }
 }

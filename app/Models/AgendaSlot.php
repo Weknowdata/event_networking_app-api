@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AgendaSlot extends Model
 {
@@ -37,5 +38,10 @@ class AgendaSlot extends Model
     public function day(): BelongsTo
     {
         return $this->belongsTo(AgendaDay::class, 'agenda_day_id');
+    }
+
+    public function speakers(): HasMany
+    {
+        return $this->hasMany(AgendaSpeaker::class)->orderBy('sort_order');
     }
 }

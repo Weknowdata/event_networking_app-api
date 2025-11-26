@@ -13,7 +13,7 @@ class AgendaController extends Controller
 {
     public function index(): JsonResponse
     {
-        $days = AgendaDay::with('slots')
+        $days = AgendaDay::with(['slots.speakers'])
             ->orderBy('day_number')
             ->get();
 
@@ -53,7 +53,7 @@ class AgendaController extends Controller
             }
         });
 
-        $days = AgendaDay::with('slots')
+        $days = AgendaDay::with(['slots.speakers'])
             ->orderBy('day_number')
             ->get();
 

@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\AgendaDay;
+use App\Models\User;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 
@@ -64,8 +66,51 @@ class AgendaDemoSeeder extends Seeder
             'Day 5: Deploy & Scale',
         ];
 
+        $speakerTemplates = [
+            10 => [
+                [
+                    'name' => 'Avery Chen',
+                    'title' => 'Senior Developer',
+                    'company' => 'Atlas Apps',
+                ],
+                [
+                    'name' => 'Priya Nair',
+                    'title' => 'Product Manager',
+                    'company' => 'BuildFast',
+                ],
+            ],
+            13 => [
+                [
+                    'name' => 'Luis Ortega',
+                    'title' => 'Integration Lead',
+                    'company' => 'FlowBridge',
+                ],
+                [
+                    'name' => 'Nadia Karim',
+                    'title' => 'Solutions Architect',
+                    'company' => 'CloudKey',
+                ],
+            ],
+            14 => [
+                [
+                    'name' => 'Mara Jensen',
+                    'title' => 'Developer Advocate',
+                    'company' => 'FileMaker',
+                ],
+            ],
+            16 => [
+                [
+                    'name' => 'Kenji Sato',
+                    'title' => 'UX Lead',
+                    'company' => 'Northwind Studio',
+                ],
+            ],
+        ];
+
         // Reset existing agenda so demo data stays deterministic.
         AgendaDay::query()->delete();
+
+        $availableSpeakerIds = User::query()->inRandomOrder()->limit(8)->pluck('id')->all();
 
         for ($i = 0; $i < $daysCount; $i++) {
             $day = AgendaDay::create([
@@ -93,7 +138,37 @@ class AgendaDemoSeeder extends Seeder
                 ];
             }
 
-            $day->slots()->createMany($slots);
+            $createdSlots = collect($day->slots()->createMany($slots));
+
+            $createdSlots->each(function ($slot) use ($speakerTemplates, $availableSpeakerIds) {
+                $hour = Carbon::parse((string) $slot->start_time)->hour;
+                $templates = $speakerTemplates[$hour] ?? null;
+
+                if (! $templates) {
+                    return;
+                }
+
+                $slot->speakers()->createMany(
+                    collect($templates)->values()->map(function ($speaker, $index) {
+                        return [
+                            'name' => $speaker['name'],
+                            'title' => $speaker['title'] ?? null,
+                            'company' => $speaker['company'] ?? null,
+                            'bio' => $speaker['bio'] ?? null,
+                            'avatar_url' => $speaker['avatar_url'] ?? null,
+                            'sort_order' => $index,
+                        ];
+                    })->map(function ($data, $idx) use ($availableSpeakerIds) {
+                        if (count($availableSpeakerIds) > 0) {
+                            $data['user_id'] = $availableSpeakerIds[$idx % count($availableSpeakerIds)];
+                        } else {
+                            $data['user_id'] = null;
+                        }
+
+                        return $data;
+                    })->all()
+                );
+            });
         }
     }
 }
