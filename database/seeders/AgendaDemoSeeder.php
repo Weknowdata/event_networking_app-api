@@ -135,10 +135,17 @@ class AgendaDemoSeeder extends Seeder
                     'title' => "{$titlePrefix} — {$template['title']}",
                     'description' => $template['description'],
                     'location' => $template['location'],
+                    'type' => 'session',
                 ];
             }
 
             $createdSlots = collect($day->slots()->createMany($slots));
+
+            // Randomly mark 2–3 slots per day as workshops for demo data.
+            $workshopCount = min($createdSlots->count(), random_int(2, 3));
+            $createdSlots->random($workshopCount)->each(function ($slot) {
+                $slot->update(['type' => 'workshop']);
+            });
 
             $createdSlots->each(function ($slot) use ($speakerTemplates, $availableSpeakerIds) {
                 $hour = Carbon::parse((string) $slot->start_time)->hour;
