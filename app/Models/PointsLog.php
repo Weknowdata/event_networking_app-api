@@ -13,6 +13,7 @@ class PointsLog extends Model
     protected $fillable = [
         'user_id',
         'user_connection_id',
+        'challenge_completion_id',
         'source_type',
         'points',
         'metadata',
@@ -38,5 +39,10 @@ class PointsLog extends Model
     public function connection(): BelongsTo
     {
         return $this->belongsTo(UserConnection::class, 'user_connection_id');
+    }
+
+    public function challengeCompletion(): BelongsTo
+    {
+        return $this->belongsTo(ChallengeCompletion::class);
     }
 }

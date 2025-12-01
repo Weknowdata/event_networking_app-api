@@ -5,17 +5,38 @@ namespace App\Http\Controllers;
 use App\Http\Requests\GenerateAgendaRequest;
 use App\Http\Resources\AgendaDayResource;
 use App\Models\AgendaDay;
+use App\Models\SessionAttendance;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AgendaController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $days = AgendaDay::with(['slots.speakers'])
+        $days = AgendaDay::with(['slots.speakers', 'slots.day'])
             ->orderBy('day_number')
             ->get();
+
+        $user = $request->user();
+
+        if ($user) {
+            $slots = $days->flatMap(fn ($day) => $day->slots);
+            $slotIds = $slots->pluck('id')->all();
+
+            if ($slotIds !== []) {
+                $attendances = SessionAttendance::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('agenda_slot_id', $slotIds)
+                    ->get()
+                    ->keyBy('agenda_slot_id');
+
+                foreach ($slots as $slot) {
+                    $slot->setAttribute('checked_in', $attendances->has($slot->id));
+                }
+            }
+        }
 
         return response()->json([
             'agenda' => AgendaDayResource::collection($days),
@@ -46,6 +67,7 @@ class AgendaController extends Controller
                         'title' => 'TBD',
                         'description' => null,
                         'location' => null,
+                        'type' => 'session',
                     ];
                 }
 
@@ -53,7 +75,7 @@ class AgendaController extends Controller
             }
         });
 
-        $days = AgendaDay::with(['slots.speakers'])
+        $days = AgendaDay::with(['slots.speakers', 'slots.day'])
             ->orderBy('day_number')
             ->get();
 

@@ -8,6 +8,9 @@ use App\Http\Controllers\SignupController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\ConnectionController;
 use App\Http\Controllers\LeaderboardController;
+use App\Http\Controllers\ScanController;
+use App\Http\Controllers\ChallengeController;
+use App\Http\Controllers\SessionAttendanceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -35,7 +38,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // Points leaderboard (supports period/limit, returns viewer rank).
     Route::get('/leaderboard', [LeaderboardController::class, 'index']);
 
+    // Challenges: today + history.
+    Route::get('/challenges/today', [ChallengeController::class, 'today']);
+    Route::get('/challenges/history', [ChallengeController::class, 'history']);
+
+    // QR scan ingestion for sessions and sponsor booths.
+    Route::post('/scan/session', [ScanController::class, 'session']);
+    Route::post('/scan/session/checkout', [ScanController::class, 'checkout']);
+    Route::post('/scan/booth', [ScanController::class, 'booth']);
+
     // Agenda: list and regenerate 5 or 7 day schedules with 9am-5pm slots.
     Route::get('/agenda', [AgendaController::class, 'index']);
     Route::post('/agenda/generate', [AgendaController::class, 'generate']);
+
+    // Session attendance history for the current user.
+    Route::get('/sessions/attendance', [SessionAttendanceController::class, 'index']);
 });

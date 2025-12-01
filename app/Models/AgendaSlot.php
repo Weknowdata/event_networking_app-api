@@ -21,6 +21,7 @@ class AgendaSlot extends Model
         'title',
         'description',
         'location',
+        'type',
     ];
 
     /**
@@ -32,6 +33,7 @@ class AgendaSlot extends Model
             'agenda_day_id' => 'integer',
             'start_time' => 'datetime:H:i:s',
             'end_time' => 'datetime:H:i:s',
+            'type' => 'string',
         ];
     }
 

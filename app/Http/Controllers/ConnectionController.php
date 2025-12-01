@@ -10,6 +10,7 @@ use App\Models\PointsLog;
 use App\Models\PointsSource;
 use App\Models\User;
 use App\Models\UserConnection;
+use App\Services\ChallengeEvaluator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,10 @@ class ConnectionController extends Controller
 {
     private const DAILY_LIMIT = 15;
     private const NOTE_POINTS = 10;
+
+    public function __construct(private ChallengeEvaluator $challengeEvaluator)
+    {
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -119,6 +124,8 @@ class ConnectionController extends Controller
         }
 
         $this->attachComputedPoints($connection);
+        // Trigger daily challenge evaluation so connection-based goals award points.
+        $this->challengeEvaluator->evaluateForDay($user, Carbon::parse($connection->connected_at));
 
         return response()->json([
             'message' => 'Connection recorded.',

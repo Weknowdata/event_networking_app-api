@@ -6,4 +6,5 @@ enum PointsSource: string
 {
     case CONNECTION = 'connection';
     case CONNECTION_NOTE = 'connection_note';
+    case CHALLENGE = 'challenge';
 }

@@ -25,5 +25,7 @@ class DatabaseSeeder extends Seeder
         $this->call(LeaderboardPointsSeeder::class);
         // 5) Seed a demo 5-day agenda with 9am-5pm slots.
         $this->call(AgendaDemoSeeder::class);
+        // 6) Seed demo challenges for daily play.
+        $this->call(ChallengeDemoSeeder::class);
     }
 }
