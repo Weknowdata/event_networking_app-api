@@ -38,8 +38,11 @@ class AttendeeController extends Controller
             $query->whereHas('profile', fn ($profileQuery) => $profileQuery->where('is_first_timer', true));
         }
 
+        // Return attendees in a consistent alphabetical order.
+        $query->orderBy('name');
+
         // Clamp per-page to a reasonable range to avoid excessive payloads.
-        $perPage = (int) $request->integer('per_page', 15);
+        $perPage = (int) $request->integer('per_page', 100);
         $perPage = max(1, min($perPage, 100));
 
         $attendees = $query->paginate($perPage)->appends($request->query());
