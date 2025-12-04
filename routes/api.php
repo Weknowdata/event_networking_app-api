@@ -11,12 +11,14 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\SessionAttendanceController;
+use App\Http\Controllers\LogoutController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/check', LoginController::class);
 Route::post('/auth/google/mobile', [GoogleAuthController::class, 'mobile']);
 Route::post('/signup', SignupController::class);
+Route::post('/logout', LogoutController::class)->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->group(function () {
     // Authenticated user info/profile.
