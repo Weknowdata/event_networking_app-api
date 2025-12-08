@@ -11,6 +11,7 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\SessionAttendanceController;
+use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\LogoutController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -55,4 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Session attendance history for the current user.
     Route::get('/sessions/attendance', [SessionAttendanceController::class, 'index']);
+
+    // User feedback: create, fetch, and update.
+    Route::post('/feedback', [FeedbackController::class, 'store']);
+    Route::get('/feedback/{user}', [FeedbackController::class, 'show']);
+    Route::patch('/feedback/{feedback}', [FeedbackController::class, 'update']);
 });

@@ -66,6 +66,11 @@ class User extends Authenticatable
         return $this->hasOne(UserProfile::class);
     }
 
+    public function feedback(): HasOne
+    {
+        return $this->hasOne(Feedback::class);
+    }
+
     public function qrSignature(): string
     {
         $key = config('app.key');
